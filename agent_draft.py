@@ -25,6 +25,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from models import DRAFT_MODEL
 from prompt_context import build_draft_editorial_context
 from utils import output_path
 
@@ -37,7 +38,6 @@ PIECE_BRIEF_PATH = ROOT / "piece_brief.md"
 FINAL_PATH      = output_path("agent_draft")
 REV_NOTES_PATH  = output_path("agent_draft_revision_notes")
 
-MODEL              = "claude-opus-4-7"
 MAX_TOKENS_COMPOSE = 8000
 MAX_TOKENS_REVISE  = 16000   # holds revision notes + revised draft
 
@@ -164,7 +164,7 @@ def compose_draft(client: Anthropic, system_prompt: str, matrix: dict, brief_md:
         "Compose the complete comparison piece in markdown per the composition rules above. Output only the markdown."
     )
     resp = client.messages.create(
-        model=MODEL,
+        model=DRAFT_MODEL,
         max_tokens=MAX_TOKENS_COMPOSE,
         system=system_prompt,
         messages=[{"role": "user", "content": user}],
@@ -182,7 +182,7 @@ def revise_draft(client: Anthropic, system_prompt: str, draft: str) -> tuple:
         "using the exact two-section delimiter format."
     )
     resp = client.messages.create(
-        model=MODEL,
+        model=DRAFT_MODEL,
         max_tokens=MAX_TOKENS_REVISE,
         system=system_prompt,
         messages=[{"role": "user", "content": user}],

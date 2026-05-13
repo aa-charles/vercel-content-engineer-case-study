@@ -24,16 +24,20 @@ from utils import output_path
 
 ROOT        = Path(__file__).parent
 OUTPUTS     = ROOT / "outputs"
-EXTRACTIONS = output_path("extractions")
-MATRIX      = output_path("comparison_matrix")
-BRIEF       = output_path("comparison_brief")
-FINAL       = output_path("agent_draft")
-NOTES       = output_path("agent_draft_revision_notes")
+EXTRACTIONS_PATH    = output_path("extractions")
+MATRIX_PATH         = output_path("comparison_matrix")
+BRIEF_PATH          = output_path("comparison_brief")
+DRAFT_PATH          = output_path("agent_draft")
+REVISION_NOTES_PATH = output_path("agent_draft_revision_notes")
 RAW         = OUTPUTS / "raw"
 
 # Estimates from prior runs. NOT measurements — agents don't currently
 # instrument token usage. Used only for the orchestrator's display.
-EST_COST = {"extract": "~$1.40", "compare": "~$4-6", "draft": "~$2-3"}
+EST_COST = {
+    "extract": (1.40, 1.40),
+    "compare": (4.00, 6.00),
+    "draft":   (2.00, 3.00),
+}
 EST_TIME = {"extract": "~5-7 min", "compare": "~5-10 min", "draft": "~5-8 min"}
 
 BAR   = "─" * 95
@@ -55,6 +59,14 @@ def _fmt_mtime(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
 
 
+def _fmt_cost(cost_tuple) -> str:
+    """Format a (low, high) cost tuple as '~$X.XX' if equal, '~$X.XX-Y.YY' otherwise."""
+    low, high = cost_tuple
+    if low == high:
+        return f"~${low:.2f}"
+    return f"~${low:.2f}-{high:.2f}"
+
+
 def _word_count(path: Path):
     return len(path.read_text().split()) if path.exists() else None
 
@@ -62,18 +74,18 @@ def _word_count(path: Path):
 # ─────────────────────────── metric extractors ────────────────────────────
 
 def _extract_metric():
-    if not EXTRACTIONS.exists():
+    if not EXTRACTIONS_PATH.exists():
         return None
-    data = json.loads(EXTRACTIONS.read_text())
+    data = json.loads(EXTRACTIONS_PATH.read_text())
     n_claims  = sum(len(e.get("claims", [])) for e in data.get("extractions", []))
     n_sources = len(data.get("extractions", []))
     return f"{n_claims} claims, {n_sources} sources"
 
 
 def _compare_metric():
-    if not MATRIX.exists():
+    if not MATRIX_PATH.exists():
         return None
-    data = json.loads(MATRIX.read_text())
+    data = json.loads(MATRIX_PATH.read_text())
     return (
         f"{len(data.get('dimensions', {}))} dimensions, "
         f"{len(data.get('editorial_tensions', []))} tensions, "
@@ -104,11 +116,11 @@ def _voice_anchor_summary():
 
 def _suggest_next_command() -> str:
     """Suggest the next run.py invocation based on which outputs exist."""
-    if not EXTRACTIONS.exists():
+    if not EXTRACTIONS_PATH.exists():
         return "python3 run.py"
-    if not MATRIX.exists():
+    if not MATRIX_PATH.exists():
         return "python3 run.py --skip-extract"
-    if not FINAL.exists():
+    if not DRAFT_PATH.exists():
         return "python3 run.py --skip-extract --skip-compare"
     return "(all outputs present — full pipeline already complete)"
 
@@ -125,27 +137,27 @@ def show_status():
     print(BAR)
 
     print("\n  Extract:")
-    if EXTRACTIONS.exists():
-        _print_row("✓", EXTRACTIONS.name, _fmt_mtime(EXTRACTIONS), _extract_metric() or "")
+    if EXTRACTIONS_PATH.exists():
+        _print_row("✓", EXTRACTIONS_PATH.name, _fmt_mtime(EXTRACTIONS_PATH), _extract_metric() or "")
     else:
-        _print_row("✗", EXTRACTIONS.name, "not generated")
+        _print_row("✗", EXTRACTIONS_PATH.name, "not generated")
 
     print("\n  Compare:")
-    if MATRIX.exists():
-        _print_row("✓", MATRIX.name, _fmt_mtime(MATRIX), _compare_metric() or "")
-        if BRIEF.exists():
-            _print_row("✓", BRIEF.name, _fmt_mtime(BRIEF), f"~{_word_count(BRIEF):,} words")
+    if MATRIX_PATH.exists():
+        _print_row("✓", MATRIX_PATH.name, _fmt_mtime(MATRIX_PATH), _compare_metric() or "")
+        if BRIEF_PATH.exists():
+            _print_row("✓", BRIEF_PATH.name, _fmt_mtime(BRIEF_PATH), f"~{_word_count(BRIEF_PATH):,} words")
     else:
-        _print_row("✗", MATRIX.name, "not generated")
-        _print_row("✗", BRIEF.name, "not generated")
+        _print_row("✗", MATRIX_PATH.name, "not generated")
+        _print_row("✗", BRIEF_PATH.name, "not generated")
 
     print("\n  Draft:")
-    if FINAL.exists():
-        _print_row("✓", FINAL.name, _fmt_mtime(FINAL), f"~{_word_count(FINAL):,} words")
-        _print_row("✓", NOTES.name, _fmt_mtime(NOTES), f"~{_word_count(NOTES):,} words")
+    if DRAFT_PATH.exists():
+        _print_row("✓", DRAFT_PATH.name, _fmt_mtime(DRAFT_PATH), f"~{_word_count(DRAFT_PATH):,} words")
+        _print_row("✓", REVISION_NOTES_PATH.name, _fmt_mtime(REVISION_NOTES_PATH), f"~{_word_count(REVISION_NOTES_PATH):,} words")
     else:
-        _print_row("✗", FINAL.name, "not generated")
-        _print_row("✗", NOTES.name, "not generated")
+        _print_row("✗", DRAFT_PATH.name, "not generated")
+        _print_row("✗", REVISION_NOTES_PATH.name, "not generated")
 
     print("\n  Voice anchor (will be used at next draft):")
     desc, cache_exists, cache_path = _voice_anchor_summary()
@@ -175,7 +187,7 @@ def stage_banner(num: int, name: str, skipped: bool = False):
     if skipped:
         print(f"[{num}/3] {name.upper()}  —  SKIPPED (using existing output)")
     else:
-        print(f"[{num}/3] {name.upper()}  —  estimated {EST_COST[name]}, {EST_TIME[name]}")
+        print(f"[{num}/3] {name.upper()}  —  estimated {_fmt_cost(EST_COST[name])}, {EST_TIME[name]}")
     print(BAR)
     print()
 
@@ -232,29 +244,31 @@ def final_summary(timings: dict, completed: list, voice_anchor_desc: str):
     print("PIPELINE COMPLETE")
     print(HEAVY)
     print()
-    print("  Stage     Time      Est. cost   Output")
-    print("  ───────   ───────   ─────────   ──────────────────────────────────")
+    print("  Stage     Time      Est. cost      Output")
+    print("  ───────   ───────   ────────────   ──────────────────────────────────")
 
     rows = [
-        ("extract", [EXTRACTIONS]),
-        ("compare", [MATRIX, BRIEF]),
-        ("draft",   [FINAL, NOTES]),
+        ("extract", [EXTRACTIONS_PATH]),
+        ("compare", [MATRIX_PATH, BRIEF_PATH]),
+        ("draft",   [DRAFT_PATH, REVISION_NOTES_PATH]),
     ]
     for name, outputs in rows:
         t = timings.get(name)
         time_str = _fmt_seconds(t) if t else "skipped"
-        cost_str = EST_COST[name] if t else "—"
+        cost_str = _fmt_cost(EST_COST[name]) if t else "—"
         for i, out in enumerate(outputs):
             label_time = time_str if i == 0 else ""
             label_cost = cost_str if i == 0 else ""
             label_name = name.capitalize() if i == 0 else ""
             out_str = str(out.relative_to(ROOT)) if out.exists() else "—"
-            print(f"  {label_name:<8}  {label_time:<8}  {label_cost:<10}  {out_str}")
+            print(f"  {label_name:<8}  {label_time:<8}  {label_cost:<12}  {out_str}")
 
     total = sum(timings.values())
+    total_low  = sum(EST_COST[name][0] for name in completed)
+    total_high = sum(EST_COST[name][1] for name in completed)
     print()
     print(f"  Total time:           {_fmt_seconds(total)}")
-    print(f"  Total estimated cost: ~$7-9")
+    print(f"  Total estimated cost: {_fmt_cost((total_low, total_high))}")
     print(f"    (range reflects variation by corpus size, claim density, and revision")
     print(f"     length; actual cost not instrumented)")
 
@@ -262,9 +276,9 @@ def final_summary(timings: dict, completed: list, voice_anchor_desc: str):
         print()
         print(f"  Voice anchor: {voice_anchor_desc}")
 
-    if FINAL.exists():
+    if DRAFT_PATH.exists():
         print()
-        print(f"  Final draft:  {FINAL.relative_to(ROOT)}")
+        print(f"  Final draft:  {DRAFT_PATH.relative_to(ROOT)}")
     print()
 
 
@@ -299,12 +313,12 @@ def main():
         sys.exit(1)
 
     # Fail-fast on missing inputs for skipped stages
-    if args.skip_extract and not EXTRACTIONS.exists():
-        print(f"--skip-extract requires {EXTRACTIONS.relative_to(ROOT)} to exist.", file=sys.stderr)
+    if args.skip_extract and not EXTRACTIONS_PATH.exists():
+        print(f"--skip-extract requires {EXTRACTIONS_PATH.relative_to(ROOT)} to exist.", file=sys.stderr)
         print("Run extract first or remove the flag.", file=sys.stderr)
         sys.exit(1)
-    if args.skip_compare and not MATRIX.exists():
-        print(f"--skip-compare requires {MATRIX.relative_to(ROOT)} to exist.", file=sys.stderr)
+    if args.skip_compare and not MATRIX_PATH.exists():
+        print(f"--skip-compare requires {MATRIX_PATH.relative_to(ROOT)} to exist.", file=sys.stderr)
         print("Run compare first or remove the flag.", file=sys.stderr)
         sys.exit(1)
 
@@ -342,10 +356,10 @@ def main():
         if completed:
             print("Completed stages keep their outputs:")
             if "extract" in completed:
-                print(f"  ✓ {EXTRACTIONS.relative_to(ROOT)}")
+                print(f"  ✓ {EXTRACTIONS_PATH.relative_to(ROOT)}")
             if "compare" in completed:
-                print(f"  ✓ {MATRIX.relative_to(ROOT)}")
-                print(f"  ✓ {BRIEF.relative_to(ROOT)}")
+                print(f"  ✓ {MATRIX_PATH.relative_to(ROOT)}")
+                print(f"  ✓ {BRIEF_PATH.relative_to(ROOT)}")
             print()
             print(f"To resume: {_suggest_next_command()}")
         sys.exit(130)
@@ -355,7 +369,7 @@ def main():
         if completed:
             print()
             for name in completed:
-                primary = {"extract": EXTRACTIONS, "compare": MATRIX, "draft": FINAL}[name]
+                primary = {"extract": EXTRACTIONS_PATH, "compare": MATRIX_PATH, "draft": DRAFT_PATH}[name]
                 print(f"  ✓ {primary.relative_to(ROOT)} (from {name})")
         print()
         print(f"To retry: {_suggest_next_command()}")

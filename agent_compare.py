@@ -39,8 +39,10 @@ import time
 from datetime import date
 from pathlib import Path
 
+import anthropic
 from anthropic import Anthropic
 
+from models import COMPARE_MODEL
 from prompt_context import build_editorial_context
 from utils import output_path
 
@@ -51,7 +53,6 @@ PIECE_BRIEF_PATH = ROOT / "piece_brief.md"
 MATRIX_PATH      = output_path("comparison_matrix")
 BRIEF_PATH       = output_path("comparison_brief")
 
-MODEL      = "claude-opus-4-7"      # synthesis layer; Opus per project convention
 MAX_TOKENS = 8000
 
 # Keywords used to score brief_priority for each dimension by scanning piece_brief.md.
@@ -226,7 +227,7 @@ def call_setup(client, system_prompt: str, dimension_universe: list, sources_exc
         f"{sources_excerpt}"
     )
     resp = client.messages.create(
-        model=MODEL,
+        model=COMPARE_MODEL,
         max_tokens=MAX_TOKENS,
         system=system_prompt + "\n\n" + SETUP_RULES,
         messages=[{"role": "user", "content": user}],
@@ -287,7 +288,7 @@ def call_dimension_composition(client, system_prompt: str, dimension: str, claim
             json.dumps(claims_by_subject["third_party"], indent=2),
         ]
     resp = client.messages.create(
-        model=MODEL,
+        model=COMPARE_MODEL,
         max_tokens=MAX_TOKENS,
         system=system_prompt + "\n\n" + DIMENSION_RULES,
         messages=[{"role": "user", "content": "".join(user_parts)}],
@@ -350,7 +351,7 @@ def call_tension_composition(client, system_prompt: str, tension_spec: dict, evi
         f"{json.dumps(evidence_claims, indent=2)}"
     )
     resp = client.messages.create(
-        model=MODEL,
+        model=COMPARE_MODEL,
         max_tokens=MAX_TOKENS,
         system=system_prompt + "\n\n" + TENSION_RULES,
         messages=[{"role": "user", "content": user}],
@@ -397,7 +398,7 @@ def call_asymmetry_detection(client, system_prompt: str, sources_summary: str, c
         f"{claim_summary}"
     )
     resp = client.messages.create(
-        model=MODEL,
+        model=COMPARE_MODEL,
         max_tokens=MAX_TOKENS,
         system=system_prompt + "\n\n" + ASYMMETRY_RULES,
         messages=[{"role": "user", "content": user}],
@@ -506,7 +507,8 @@ def assemble_tension_entry(tension_spec: dict, evidence_claims: list, model_outp
 
     bp = compute_brief_priority([tension_spec["name"].replace("_", " "), tension_spec.get("summary", "")], brief_text)
     # Tensions named in piece_brief.md §"Editorial tensions to surface" should land at 3
-    bp = max(bp, 3 if "tension" in tension_spec.get("source", "brief") else bp)
+    if tension_spec.get("source") == "brief":
+        bp = max(bp, 3)
 
     scoring = {
         "brief_priority":         bp,
@@ -666,7 +668,7 @@ def run() -> dict:
         print(f"      compose {dim}  (a={len(claims_by_subject['subject_a'])}, b={len(claims_by_subject['subject_b'])})")
         try:
             model_out = call_dimension_composition(client, system_prompt, dim, claims_by_subject)
-        except Exception as e:
+        except (anthropic.APIError, ValueError, json.JSONDecodeError) as e:
             print(f"        [error] {e}", file=sys.stderr)
             continue
         matrix["dimensions"][dim] = assemble_dimension_entry(dim, claims_by_subject, model_out, brief_text)
@@ -686,7 +688,7 @@ def run() -> dict:
         print(f"      compose tension '{spec['name']}'  ({len(evidence)} evidence claims)")
         try:
             model_out = call_tension_composition(client, system_prompt, spec, evidence)
-        except Exception as e:
+        except (anthropic.APIError, ValueError, json.JSONDecodeError) as e:
             print(f"        [error] {e}", file=sys.stderr)
             continue
         matrix["editorial_tensions"].append(assemble_tension_entry(spec, evidence, model_out, brief_text))
@@ -713,7 +715,7 @@ def run() -> dict:
             claim_summary_by_subject_dimension(extractions),
         )
         print(f"      {len(matrix['detected_asymmetries'])} asymmetries detected")
-    except Exception as e:
+    except (anthropic.APIError, ValueError, json.JSONDecodeError) as e:
         print(f"        [error] {e}", file=sys.stderr)
 
     # ─── Sort by composite_weight desc ───

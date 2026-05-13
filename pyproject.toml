@@ -1,0 +1,14 @@
+[project]
+name = "vercel-content-engineer-case-study"
+version = "1.0.0"
+description = "A four-agent content engineering pipeline that produces editorial-grade comparison articles."
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=0.40.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Repository = "https://github.com/aa-charles/vercel-content-engineer-case-study"

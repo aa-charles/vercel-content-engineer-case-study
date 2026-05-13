@@ -29,8 +29,10 @@ import sys
 import time
 from pathlib import Path
 
+import anthropic
 from anthropic import Anthropic
 
+from models import EXTRACT_MODEL
 from prompt_context import build_editorial_context
 from utils import RAW_DIR, fetch, output_path, slug
 
@@ -39,7 +41,6 @@ SOURCES_PATH = ROOT / "sources.json"
 ROLES_PATH = ROOT / "roles.json"
 OUTPUT_PATH = output_path("extractions")
 
-MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 8000
 
 # How each claim_handling value should shape the model's output voice.
@@ -206,7 +207,7 @@ def extract_source(client: Anthropic, source: dict, rules: dict, subject_id, cat
     user_prompt += "\n\n=== SOURCE CONTENT ===\n\n" + content
 
     resp = client.messages.create(
-        model=MODEL,
+        model=EXTRACT_MODEL,
         max_tokens=MAX_TOKENS,
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
@@ -276,7 +277,7 @@ def run(url_filter=None) -> dict:
         print(f"  EXTRACT [{role}] {url}")
         try:
             extraction = extract_source(client, source, rules, subject_id, category, system_prompt)
-        except Exception as e:
+        except (anthropic.APIError, ValueError, json.JSONDecodeError) as e:
             print(f"    [error] {e}", file=sys.stderr)
             continue
 
