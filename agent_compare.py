@@ -1,7 +1,7 @@
 """
 Layer 2: Comparison matrix agent.
 
-Reads outputs/extractions.json (claims from all sources), composes a
+Reads outputs/extractions_<piece-id>.json (claims from all sources), composes a
 comparison matrix per the contract in comparison_matrix.schema.md.
 
 Pipeline:
@@ -20,7 +20,7 @@ Pipeline:
      evidence_density, composite_weight. Sort dimensions and tensions by
      composite_weight descending. (Tension's disagreement_intensity is
      derived from steelman_quality.)
-  6. RENDER outputs/comparison_brief.md mechanically from the JSON.
+  6. RENDER outputs/comparison_brief_<piece-id>.md mechanically from the JSON.
 
 Outputs (piece-scoped via output_path() in utils.py; piece-id comes from sources.json):
   outputs/comparison_matrix_<piece-id>.json  (primary, for agent_draft.py)
@@ -151,19 +151,13 @@ def collect_claims_for_dimension(extractions: list, dimension: str) -> dict:
     return out
 
 
-def collect_claims_for_tension(extractions: list, tension_name: str, brief_disputed_ids: list) -> list:
+def collect_claims_for_tension(extractions: list, brief_disputed_ids: list) -> list:
     """
-    Pull claims relevant to a tension.
+    Pull claims whose `disputed_claims_ref` intersects with `brief_disputed_ids`.
 
-    Includes:
-      - Any claim whose disputed_claims_ref intersects with the tension's
-        associated disputed_claims (provided in brief_disputed_ids)
-      - Any claim from a subject whose source's `disputed_claims` registers
-        a stake in this tension (i.e., subject sources that defend a position
-        against the dispute)
-    For sub-types where disputed_claims_refs aren't applicable
-    (subject_disclosure, category framing tensions), the model is given the
-    full claim set in the user prompt and selects from it.
+    For tensions where disputed_claims_refs don't apply (subject_disclosure,
+    category framing), the caller passes an empty list — the run() orchestrator
+    falls back to subject-level claims in that case.
     """
     relevant = []
     for ext in extractions:
@@ -505,10 +499,8 @@ def assemble_tension_entry(tension_spec: dict, evidence_claims: list, model_outp
     sq = model_output.get("steelman_quality", "weak")
     di = {"both_strong": 3, "asymmetric": 2, "weak": 1}.get(sq, 1)
 
-    bp = compute_brief_priority([tension_spec["name"].replace("_", " "), tension_spec.get("summary", "")], brief_text)
-    # Tensions named in piece_brief.md §"Editorial tensions to surface" should land at 3
-    if tension_spec.get("source") == "brief":
-        bp = max(bp, 3)
+    # Every tension surfaces from the brief setup pass, so brief_priority is always 3.
+    bp = 3
 
     scoring = {
         "brief_priority":         bp,
@@ -629,7 +621,7 @@ def run() -> dict:
 
     sa_src, sa_claims = _count_for("subject_a")
     sb_src, sb_claims = _count_for("subject_b")
-    third_party_claims = sum(len(ext["claims"]) for ext in extractions if all(c.get("subject_id") is None for c in ext["claims"]))
+    third_party_claims = sum(1 for ext in extractions for c in ext["claims"] if c.get("subject_id") is None)
     total_claims = sum(len(ext["claims"]) for ext in extractions)
 
     matrix = {
@@ -677,8 +669,7 @@ def run() -> dict:
     # ─── Pass 2b: per-tension composition ───
     print("[3/4] Per-tension composition...")
     for spec in tensions_to_surface:
-        spec["source"] = "brief"   # for brief_priority floor
-        evidence = collect_claims_for_tension(extractions, spec["name"], spec.get("associated_disputed_claims", []))
+        evidence = collect_claims_for_tension(extractions, spec.get("associated_disputed_claims", []))
         # If type=subject_disclosure and no disputed_claims_refs hit, fall back to subject's own claims
         if not evidence and spec["type"] == "subject_disclosure" and spec.get("disclosing_subject"):
             evidence = [c for ext in extractions for c in ext["claims"]

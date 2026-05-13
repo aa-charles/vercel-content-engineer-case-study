@@ -83,7 +83,7 @@ A full list of technical, process, and architectural improvements can be found a
 ```
 agent_extract.py              per-source claim extraction
 agent_compare.py              matrix synthesis + asymmetry detection
-agent_draft.py                compose + revise
+agent_draft.py                compose + revise (two passes — composition and self-review)
 prompt_context.py             editorial context loader + voice anchor selection
 run.py                        orchestrator
 utils.py                      shared helpers
@@ -99,7 +99,7 @@ outputs/
   extractions_<id>.json                Layer 1 output
   comparison_matrix_<id>.json          Layer 2 output
   comparison_brief_<id>.md             human-readable matrix view
-  agent_draft_<id>.md                  Layer 3 output (initial draft)
+  agent_draft_<id>.md                  Layer 3 output (agent draft, post-revision)
   agent_draft_revision_notes_<id>.md   self-review notes from revision pass
   final_draft_<id>.md                  edited version, submitted as the case study
 ```

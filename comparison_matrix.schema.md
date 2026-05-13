@@ -188,11 +188,11 @@ The composite_weight formula is in code, not in the schema — tunable based on 
 
 The compare agent runs in two passes plus an asymmetry query:
 
-1. **Pass 1 — Indexing.** Reads every claim from `outputs/extractions.json`. Builds cross-source pairings (recognizing terminology variants — e.g., Vercel's "build-time directives" ≡ Inngest's "magic strings"), maps each claim to dimensions and tensions. Builds on the per-claim `dimensions_covered` tagging the extract agent already produced; doesn't re-tag.
+1. **Pass 1 — Indexing.** Reads every claim from `outputs/extractions_<piece-id>.json`. Builds cross-source pairings (recognizing terminology variants — e.g., Vercel's "build-time directives" ≡ Inngest's "magic strings"), maps each claim to dimensions and tensions. Builds on the per-claim `dimensions_covered` tagging the extract agent already produced; doesn't re-tag.
 2. **Pass 2 — Composition.** For each dimension and tension, queries the Pass 1 index, composes the entry (positions, verdicts, steelmans, narrative_payload, scoring with inline reader_decision_impact reasoning).
 3. **Asymmetry query.** Dedicated pass over the indexed map looking for structural differences. Outputs `detected_asymmetries`.
 
-Then mechanical post-processing: compute `composite_weight`, sort dimensions and tensions descending, write `outputs/comparison_matrix.json`, render `outputs/comparison_brief.md` from the JSON via template.
+Then mechanical post-processing: compute `composite_weight`, sort dimensions and tensions descending, write `outputs/comparison_matrix_<piece-id>.json`, render `outputs/comparison_brief_<piece-id>.md` from the JSON via template.
 
 ---
 

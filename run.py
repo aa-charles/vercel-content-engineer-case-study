@@ -215,10 +215,14 @@ def review_checkpoint():
     print()
     print("Compare stage complete. Review the comparison brief before drafting:")
     print()
-    print("  open outputs/comparison_brief.md")
+    print(f"  open {BRIEF_PATH.relative_to(ROOT)}")
     print()
     print("Press ENTER to continue to draft stage, or Ctrl-C to abort.")
-    input("> ")   # KeyboardInterrupt / EOFError propagates to top level
+    try:
+        input("> ")
+    except EOFError:
+        # Piped/empty stdin should abort cleanly, not crash. Treat as user abort.
+        raise KeyboardInterrupt
 
 
 def run_stage(num: int, name: str, fn) -> float:
