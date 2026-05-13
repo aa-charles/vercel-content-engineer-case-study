@@ -1,0 +1,323 @@
+{
+  "id": "vercel-workflows-vs-cloudflare-workflows",
+  "topic": "Compare Vercel Workflows vs Cloudflare Workflows for durable execution",
+  "subject_a": {
+    "name": "Vercel Workflows",
+    "vendor": "Vercel",
+    "sources": {
+      "overview": [
+        {
+          "url": "https://vercel.com/workflows",
+          "role": "vendor_marketing",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["product_positioning", "feature_inventory"],
+          "dimensions_covered": ["programming_model", "ai_orientation"],
+          "editorial_signal": "vendor_conviction",
+          "freshness_concern": null,
+          "notes": "Primary positioning page. Establishes the AI-agent and durable-execution framing. Read for tone and emphasis, not technical depth."
+        }
+      ],
+      "concepts": [
+        {
+          "url": "https://vercel.com/docs/workflows",
+          "role": "vendor_docs",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "feature_inventory"],
+          "dimensions_covered": ["programming_model", "state_persistence", "language_support", "limits_and_payloads"],
+          "editorial_signal": "routine_documentation",
+          "freshness_concern": null,
+          "notes": "Authoritative reference for Workflows mechanics."
+        },
+        {
+          "url": "https://workflow-sdk.dev/",
+          "role": "vendor_docs",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "design_rationale"],
+          "dimensions_covered": ["programming_model", "language_support"],
+          "editorial_signal": "architectural_disclosure",
+          "freshness_concern": null,
+          "notes": "Standalone SDK site documenting the build-time directive programming model — the design choice Inngest critiques. Read with that critique in mind."
+        }
+      ],
+      "pricing": [
+        {
+          "url": "https://vercel.com/docs/workflows/pricing",
+          "role": "vendor_pricing",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["pricing_mechanics"],
+          "dimensions_covered": ["pricing", "limits_and_payloads"],
+          "editorial_signal": "pricing_unusual_choice",
+          "freshness_concern": null,
+          "notes": "Three-resource billing model (events + data written + data retained) — distinct breakdown to surface in matrix. Hard limits live here too."
+        }
+      ],
+      "launch_context": [
+        {
+          "url": "https://vercel.com/blog/a-new-programming-model-for-durable-execution",
+          "role": "vendor_launch_blog",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["design_rationale", "product_positioning"],
+          "dimensions_covered": ["programming_model"],
+          "editorial_signal": "category_framing_choice",
+          "freshness_concern": null,
+          "notes": "Vercel's framing of WHY they built a new programming model. Source for design rationale of build-time directives."
+        },
+        {
+          "url": "https://vercel.com/blog/introducing-workflow",
+          "role": "vendor_launch_blog",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["product_positioning", "feature_inventory", "use_case_evidence"],
+          "dimensions_covered": ["programming_model", "ai_orientation"],
+          "editorial_signal": "vendor_conviction",
+          "freshness_concern": null,
+          "notes": "Launch announcement. Read for what Vercel emphasizes publicly and which use cases they shipped with."
+        }
+      ],
+      "platform_context": [
+        {
+          "url": "https://vercel.com/fluid",
+          "role": "vendor_substrate_doc",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["product_positioning", "technical_architecture"],
+          "dimensions_covered": ["compute_substrate"],
+          "editorial_signal": "architectural_disclosure",
+          "freshness_concern": null,
+          "notes": "Fluid is the substrate Workflows runs on. Critical for understanding the platform asymmetry vs. Cloudflare (Workers + DOs)."
+        },
+        {
+          "url": "https://vercel.com/blog/fluid-how-we-built-serverless-servers",
+          "role": "vendor_engineering_blog",
+          "vendor": "Vercel",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "design_rationale"],
+          "dimensions_covered": ["compute_substrate"],
+          "editorial_signal": "architectural_disclosure",
+          "freshness_concern": null,
+          "notes": "Engineering deep-dive on Fluid. Read for the 'serverless servers' framing and what Vercel admits about traditional serverless limits."
+        }
+      ]
+    }
+  },
+  "subject_b": {
+    "name": "Cloudflare Workflows",
+    "vendor": "Cloudflare",
+    "sources": {
+      "overview": [
+        {
+          "url": "https://www.cloudflare.com/developer-platform/products/workflows/",
+          "role": "vendor_marketing",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["product_positioning", "feature_inventory"],
+          "dimensions_covered": ["programming_model", "compute_substrate"],
+          "editorial_signal": "vendor_conviction",
+          "freshness_concern": null,
+          "notes": "Primary positioning page. Read for how Cloudflare frames value vs. running long-lived Workers, and which integrations they emphasize."
+        }
+      ],
+      "concepts": [
+        {
+          "url": "https://developers.cloudflare.com/workflows/",
+          "role": "vendor_docs",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "feature_inventory"],
+          "dimensions_covered": ["programming_model", "state_persistence", "language_support", "limits_and_payloads"],
+          "editorial_signal": "routine_documentation",
+          "freshness_concern": null,
+          "notes": "Authoritative reference for Cloudflare Workflows mechanics."
+        },
+        {
+          "url": "https://developers.cloudflare.com/durable-objects/concepts/what-are-durable-objects/",
+          "role": "vendor_substrate_doc",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "design_rationale"],
+          "dimensions_covered": ["compute_substrate", "state_persistence"],
+          "editorial_signal": "architectural_disclosure",
+          "freshness_concern": null,
+          "notes": "DOs are the substrate Workflows is built on. Critical for understanding state-per-actor model — distinct from Vercel's Fluid."
+        },
+        {
+          "url": "https://developers.cloudflare.com/workflows/build/rules-of-workflows/",
+          "role": "vendor_docs",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "production_failure_modes"],
+          "dimensions_covered": ["programming_model", "state_persistence", "limits_and_payloads"],
+          "editorial_signal": "self_admission_of_limitation",
+          "freshness_concern": null,
+          "notes": "Rules-and-pitfalls guide. Read for what Cloudflare explicitly tells you NOT to do — failure modes disclosed via warnings."
+        },
+        {
+          "url": "https://blog.cloudflare.com/building-workflows-durable-execution-on-workers/",
+          "role": "vendor_engineering_blog",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["design_rationale", "technical_architecture"],
+          "dimensions_covered": ["programming_model", "state_persistence", "compute_substrate"],
+          "editorial_signal": "architectural_disclosure",
+          "freshness_concern": "feature_set_may_have_evolved",
+          "notes": "Pre-GA beta launch deep-dive. Captures original design rationale; feature set has evolved (Python, GA limits) since."
+        }
+      ],
+      "pricing": [
+        {
+          "url": "https://developers.cloudflare.com/workflows/reference/pricing/",
+          "role": "vendor_pricing",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["pricing_mechanics"],
+          "dimensions_covered": ["pricing", "limits_and_payloads"],
+          "editorial_signal": "pricing_unusual_choice",
+          "freshness_concern": null,
+          "notes": "CPU-time-vs-wall-time billing — you don't pay while waiting on I/O or LLM responses. Deliberate philosophical contrast with Vercel's three-resource model."
+        }
+      ],
+      "launch_context": [
+        {
+          "url": "https://blog.cloudflare.com/workflows-ga-production-ready-durable-execution/",
+          "role": "vendor_launch_blog",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["product_positioning", "feature_inventory", "design_rationale"],
+          "dimensions_covered": ["programming_model", "state_persistence", "language_support"],
+          "editorial_signal": "vendor_conviction",
+          "freshness_concern": null,
+          "notes": "GA announcement. What Cloudflare considered production-ready and the path from beta."
+        },
+        {
+          "url": "https://blog.cloudflare.com/python-workflows/",
+          "role": "vendor_launch_blog",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["feature_inventory", "design_rationale"],
+          "dimensions_covered": ["language_support", "ai_orientation"],
+          "editorial_signal": "vendor_conviction",
+          "freshness_concern": null,
+          "notes": "Python support announcement. Important for language_support comparison — Vercel WDK is TS-only at launch."
+        }
+      ],
+      "platform_context": [
+        {
+          "url": "https://blog.cloudflare.com/better-testing-for-workflows/",
+          "role": "vendor_engineering_blog",
+          "vendor": "Cloudflare",
+          "published_date": null,
+          "extraction_focus": ["technical_architecture", "production_failure_modes"],
+          "dimensions_covered": ["observability_testing", "programming_model"],
+          "editorial_signal": "self_admission_of_limitation",
+          "freshness_concern": null,
+          "notes": "Testing improvements post — implies prior testing was rough. Read with that subtext for real DX disclosure."
+        }
+      ]
+    }
+  },
+  "third_party_perspectives": [
+    {
+      "url": "https://www.inngest.com/blog/explicit-apis-vs-magic-directives",
+      "role": "competitor_critique",
+      "vendor": "Inngest",
+      "published_date": null,
+      "extraction_focus": ["design_rationale", "category_framing", "production_failure_modes"],
+      "dimensions_covered": ["programming_model", "lock_in_portability", "observability_testing"],
+      "editorial_signal": "category_framing_choice",
+      "freshness_concern": null,
+      "notes": "Sharpest articulation of the build-time-directive critique. Partisan source — extract argument with attribution, not as fact.",
+      "vendor_relationship": "competitor_to_both",
+      "targets": ["subject_a"],
+      "disputed_claims": ["build_time_directive_safety", "step_identity_stability"],
+      "claim_summary": "Build-time directives derive step identity implicitly, breaking refactor-safety and deploy-mid-execution. Explicit step IDs decouple identity from code structure. Targets Vercel's WDK approach specifically."
+    },
+    {
+      "url": "https://temporal.io/blog/what-is-durable-execution",
+      "role": "category_authority",
+      "vendor": "Temporal",
+      "published_date": null,
+      "extraction_focus": ["category_framing", "design_rationale"],
+      "dimensions_covered": ["programming_model", "state_persistence", "lock_in_portability"],
+      "editorial_signal": "category_framing_choice",
+      "freshness_concern": null,
+      "notes": "Establishes durable execution vocabulary. Use for situating both products in the category, not for product-specific claims.",
+      "vendor_relationship": "category_originator",
+      "targets": [],
+      "disputed_claims": [],
+      "claim_summary": "Canonical definition of durable execution as a category. Establishes vocabulary, taxonomy, and conceptual framework. Use for situating Vercel and Cloudflare within the broader durable execution category."
+    },
+    {
+      "url": "https://news.ycombinator.com/item?id=45684217",
+      "role": "community_discussion",
+      "vendor": "Hacker News",
+      "published_date": null,
+      "extraction_focus": ["community_sentiment"],
+      "dimensions_covered": ["programming_model", "observability_testing"],
+      "editorial_signal": "routine_documentation",
+      "freshness_concern": null,
+      "notes": "Editorial value lives in disputed_claims and targets, not editorial_signal. Source is evidence of contested reception, not original framing.",
+      "vendor_relationship": "anonymous_community",
+      "targets": ["subject_a"],
+      "disputed_claims": ["build_time_directive_safety"],
+      "claim_summary": "Developer community debate on the WDK launch and the directive-based programming model. Themes: magic strings vs explicit APIs, static analysis tradeoffs, debugging implications.",
+      "use_for": "evidence that a debate exists in the developer community; do not extract individual commenter claims as authoritative"
+    }
+  ],
+  "style_references": [
+    {
+      "url": "https://vercel.com/kb/guide/vercel-waf-vs-cloudflare-waf",
+      "role": "voice_sample",
+      "purpose": "comparison_structure",
+      "use_for": "draft_agent_only",
+      "genre": "head_to_head_comparison",
+      "subject_domain": "security_infrastructure",
+      "register": "technical_explanatory_vercel_leaning",
+      "primary_voice_anchor": true
+    },
+    {
+      "url": "https://vercel.com/kb/guide/vercel-vs-akamai",
+      "role": "voice_sample",
+      "purpose": "neutral_tone_in_competitive_framing",
+      "use_for": "draft_agent_only",
+      "genre": "head_to_head_comparison",
+      "subject_domain": "edge_platform",
+      "register": "technical_explanatory_vercel_leaning",
+      "primary_voice_anchor": false
+    },
+    {
+      "url": "https://vercel.com/kb/guide/vercel-vs-render",
+      "role": "voice_sample",
+      "purpose": "feature_table_format",
+      "use_for": "draft_agent_only",
+      "genre": "head_to_head_comparison",
+      "subject_domain": "deployment_platform",
+      "register": "technical_explanatory_vercel_leaning",
+      "primary_voice_anchor": false
+    },
+    {
+      "url": "https://vercel.com/kb/guide/vercel-vs-fastly",
+      "role": "voice_sample",
+      "purpose": "closing_synthesis_pattern",
+      "use_for": "draft_agent_only",
+      "genre": "head_to_head_comparison",
+      "subject_domain": "edge_platform",
+      "register": "technical_explanatory_vercel_leaning",
+      "primary_voice_anchor": false
+    },
+    {
+      "url": "https://vercel.com/kb/guide/vercel-vs-netlify",
+      "role": "voice_sample",
+      "purpose": "use_case_recommendation_pattern",
+      "use_for": "draft_agent_only",
+      "genre": "head_to_head_comparison",
+      "subject_domain": "deployment_platform",
+      "register": "technical_explanatory_vercel_leaning",
+      "primary_voice_anchor": false
+    }
+  ]
+}

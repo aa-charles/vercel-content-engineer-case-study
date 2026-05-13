@@ -1,0 +1,17 @@
+# Secrets — never commit
+.env
+.env.local
+
+# Run artifacts (cached fetched pages — regenerable, large)
+outputs/raw/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

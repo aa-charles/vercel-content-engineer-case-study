@@ -1,0 +1,13 @@
+{
+  "vendor_marketing":        { "claim_handling": "factual_with_attribution", "extraction_depth": "shallow",  "quotable": false },
+  "vendor_docs":             { "claim_handling": "factual_authoritative",    "extraction_depth": "deep",     "quotable": true  },
+  "vendor_pricing":          { "claim_handling": "factual_authoritative",    "extraction_depth": "deep",     "quotable": true  },
+  "vendor_launch_blog":      { "claim_handling": "factual_with_attribution", "extraction_depth": "deep",     "quotable": true  },
+  "vendor_engineering_blog": { "claim_handling": "factual_with_attribution", "extraction_depth": "deep",     "quotable": true  },
+  "vendor_substrate_doc":    { "claim_handling": "factual_authoritative",    "extraction_depth": "medium",   "quotable": true  },
+  "competitor_critique":     { "claim_handling": "partisan_critique",        "extraction_depth": "deep",     "quotable": true,  "always_attribute": true },
+  "category_authority":      { "claim_handling": "category_authority",       "extraction_depth": "medium",   "quotable": true,  "always_attribute": false },
+  "community_discussion":    { "claim_handling": "community_signal",         "extraction_depth": "thematic", "quotable": false, "always_attribute": false },
+  "independent_analysis":    { "claim_handling": "factual_with_attribution", "extraction_depth": "deep",     "quotable": true,  "always_attribute": true },
+  "voice_sample":            { "use_for": "draft_agent_only", "do_not_extract": true }
+}
