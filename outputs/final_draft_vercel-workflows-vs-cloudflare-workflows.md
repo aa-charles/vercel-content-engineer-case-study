@@ -18,7 +18,7 @@ The runtime differences play out across four dimensions: how you write a step, w
 
 ### Programming model and step identity
 
-You add `"use workflow"` at the top to mark the function as durable, and `"use step"` on inner functions to mark units of work. The SDK compiles these into durable routes at build time, with step identity derived from the code's structure. The mental model is the same as the rest of your application, since workflow code is async TypeScript or Python with a directive at the boundary that changes how the runtime treats the code below it.
+A Vercel workflow is a function. You add `"use workflow"` at the top to mark the function as durable, and `"use step"` on inner functions to mark units of work. The SDK compiles these into durable routes at build time, with step identity derived from the code's structure. The mental model is the same as the rest of your application. The workflow code is async TypeScript or Python with a directive at the boundary that changes how the runtime treats the code below it.
 
 A workflow on Vercel: 
 
@@ -82,11 +82,11 @@ export class ChargeCustomer extends WorkflowEntrypoint<Env, { orderId: string }>
 ```
 
 
-Vercel's directive model is borrowed from React's `"use client"`/`"use server"` convention and aims for the same thing: keep the workflow code as ordinary TypeScript or Python. When you deploy new code while workflows are still running, [skew protection](https://vercel.com/docs/skew-protection) handles the mismatch. Old runs finish on old code, new runs start on new code. Cloudflare's design gives you direct control over step identity. The string ID passed to `step.do()` is the cache key the runtime uses to memoize that step's return. As long as you keep those IDs stable across refactors, in-flight workflows continue running correctly. Which route fits better depends on whether you want workflow code to feel like ordinary application code, or whether you want explicit, refactor-safe step identity you assign and reason about directly.
+Vercel's directive model is borrowed from React's `"use client"`/`"use server"` convention and aims for the same thing: keep the workflow code as ordinary TypeScript or Python. When you deploy new code while workflows are still running, [Skew Protection](https://vercel.com/docs/skew-protection) handles the mismatch. Old runs finish on old code, new runs start on new code. Cloudflare's design gives you direct control over step identity. The string ID passed to `step.do()` is the cache key the runtime uses to memoize that step's return. As long as you keep those IDs stable across refactors, in-flight workflows continue running correctly. The deciding factor is whether you want workflow code to feel like ordinary application code, or to have explicit, refactor-safe step identity you assign and reason about directly.
 
 ### State persistence and where code runs
 
-Vercel Workflows runs step functions on [Fluid compute](https://vercel.com/docs/fluid-compute), with the workflow runtime sitting above as a managed orchestration layer that queues steps, runs each one, and hands off between them. State lives in a centralized [event log](https://workflow-sdk.dev/docs/how-it-works/event-sourcing) that records every step input, output, stream chunk, sleep, hook, and error in a run. The runtime replays that log deterministically to rebuild state across deploys and crashes. You don't touch the persistence layer.
+Vercel Workflows runs step functions on [Fluid compute](https://vercel.com/docs/fluid-compute), with the workflow runtime sitting above as a managed orchestration layer. State lives in a centralized [event log](https://workflow-sdk.dev/docs/how-it-works/event-sourcing) that records every step input, output, stream chunk, sleep, hook, and error in a run. The runtime replays that log deterministically to rebuild state across deploys and crashes. You don't touch the persistence layer.
 
 Cloudflare Workflows runs directly on Workers and Durable Objects. Each workflow instance is a Durable Object with its own SQLite database co-located with the compute that executes it. State transitions are local and you can drop below the workflow layer to use Durable Objects directly when needed. The trade-off is that the engine can restart mid-run and replay code outside `step.do()` more than once, which makes Cloudflare's ["Rules of Workflows"](https://developers.cloudflare.com/workflows/build/rules-of-workflows/) required reading before shipping.
 
@@ -96,28 +96,28 @@ Both products surface workflow runs through dashboards and CLIs: Vercel via the 
 
 Vercel [allows](https://vercel.com/docs/workflows/pricing#workflow-run-limits) up to 50 MB per step return and 2 GB across an entire run. Run duration, sleep duration, and queued runs are uncapped; replay starts to slow past 2,000 events or 1 GB of history. Past that, breaking the workflow into child runs maintains replay performance.
 
-Cloudflare [caps](https://developers.cloudflare.com/workflows/reference/limits/) return values at 1 MiB, with `ReadableStream<Uint8Array>` for binary outputs up to 16 MB per chunk, and a 365-day cap on sleep. Anything bigger than 1 MiB must be moved to external storage such as R2, with a reference key passed forward.  
+Cloudflare caps return values at 1 MiB, with `ReadableStream<Uint8Array>` for binary outputs up to 16 MB per chunk, and a 365-day cap on sleep. Anything bigger than 1 MiB must be moved to external storage such as R2, with a reference key passed forward.  
 
 | Limit                            | Vercel Workflows                                                                                                                                                    | Cloudflare Workflows                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Per-step return value            | 50 MB                                                                                                                                                               | 1 MiB (`ReadableStream<Uint8Array>` for binary outputs up to 16 MB chunks)                                    |
 | Per-run total state              | 2 GB (replay slows past 2K events or 1 GB)                                                                                                                          | 100 MB Free / 1 GB Paid                                                                                       |
-| Per-step duration                | Up to 800s wall-clock on Pro and Enterprise (Active CPU billed during execution, inherits [Vercel Functions limits](https://vercel.com/docs/functions/limitations)) | Up to 5 min CPU time on Paid (default 30s; wall-clock unlimited)                                              |
+| Per-step duration                | Up to 800s wall-clock on Pro and Enterprise (active CPU billed during execution, inherits [Vercel Functions limits](https://vercel.com/docs/functions/limitations)) | Up to 5 min CPU time on Paid (default 30s; wall-clock unlimited)                                              |
 | Steps per run                    | 10K                                                                                                                                                                 | 1,024 Free / 10K default on Paid, configurable to 25K                                                         |
 | Run creations per second         | 1K                                                                                                                                                                  | 100 per second on Free / 300 per second per account, 100 per second per workflow on Paid                      |
 | Sleep duration                   | No limit                                                                                                                                                            | 365 days                                                                                                      |
 | Concurrency                      | Up to 100K                                                                                                                                                          | 10K actively running at once; 50K total instances per account on Paid, 100 on Free (waiting instances exempt) |
 | State retention after completion | 1 day Hobby / 7 days Pro / 30 days Enterprise                                                                                                                       | 3 days Free / 30 days Paid                                                                                    |
 
-This gap is operational. An AI workflow that needs to pass a long context window, a multi-megabyte image, or a structured retrieval result between steps can do so directly on Vercel. You return the value and pick it up in the next step. On Cloudflare, the same workflow becomes an R2 write in step one, an R2 read in step two, and a reference key as the return value between them. The best choice depends on payload size. Steps under 1 MiB are fine on either; anything bigger requires the R2 round-trip on Cloudflare.
+This gap is operational. An AI workflow that needs to pass a long context window, a multi-megabyte image, or a structured retrieval result between steps can do so directly on Vercel. You return the value and pick it up in the next step. On Cloudflare, the same workflow becomes an R2 write in step one, an R2 read in step two, and a reference key as the return value between them. The right call comes down to payload size. Steps under 1 MiB are fine on either; anything bigger requires the R2 round-trip on Cloudflare.
 
 ### AI orientation
 
-Both products name AI agent reliability as a primary use case but they approach it from different angles. Vercel starts from the JavaScript application side with deep AI SDK integration; Cloudflare starts from the platform-primitives side, with hosted inference running on the same edge as workflow execution. Since either platform works well for most AI workloads, the practical difference is where your AI code lives.
+Both products name AI agent reliability as a primary use case but they approach it from different angles. Vercel starts from the JavaScript application side with deep [AI SDK](https://ai-sdk.dev/) integration; Cloudflare starts from the platform-primitives side, with hosted inference running on the same edge as workflow execution. Since either platform works well for most AI workloads, the practical difference is where your AI code lives.
 
 Vercel's AI SDK and Workflow SDK are built around the same type systems and idioms, so you write an agent the same way you write any other workflow. Tools become `"use step"` functions and AI SDK v7's [`WorkflowAgent`](https://ai-sdk.dev/v7/docs/agents/workflow-agent) handles agent state, tool calling, and resumption as workflow primitives. The Python SDK is in beta but tracks the TypeScript SDK directly, with the same workflow, step, sleep, and hook primitives. That's the same language pandas, NumPy, and most model-provider SDKs live in natively.
 
-Cloudflare exposes Workers AI as a binding inside the workflow's `env`, alongside D1, KV, R2, Queues, and Vectorize for embeddings. A model call from inside a step is `this.env.AI.run(...)`, the same idiom as any other Cloudflare binding. Python landed in November 2025 via Pyodide with full CPython support, including pandas and matplotlib. Which fits better depends on whether you want your AI work to live at the application layer or as a platform primitive with co-located inference.
+Cloudflare exposes Workers AI as a binding inside the workflow's `env`, alongside D1, KV, R2, Queues, and Vectorize for embeddings. A model call from inside a step is `this.env.AI.run(...)`, the same idiom as any other Cloudflare binding. Python landed in November 2025 via Pyodide with full CPython support, including pandas and matplotlib. The better option depends on whether you want your AI work to live at the application layer or as a platform primitive with co-located inference.
 
 --- 
 
@@ -129,27 +129,27 @@ The section above primarily shows where the two products overlap. Those below go
 
 The directive model is the headline pitch of Vercel Workflows. A workflow is a function with `"use workflow"` at the top; a step is a function with `"use step"` at the top. There is no API surface to learn, no class to extend, and no method object to thread through your call stack. The workflow reads as the TypeScript or Python you were already writing.
 
-The cost on Cloudflare is the ["Rules of Workflows"](https://developers.cloudflare.com/workflows/build/rules-of-workflows/) page. Code outside `step.do()` may run more than once when the engine restarts, top-level state must come exclusively from `step.do()` return values, `Promise.race` and `Promise.any` need to be wrapped in `step.do()` to cache correctly, Hyperdrive connections can't be reused across steps, and a missing await on `step.do()` silently swallows exceptions. The rules exist because the runtime exposes its mechanics directly. For teams that want refactor-safe explicit step identity, those rules are the tradeoff. For teams that want durable execution to feel like ordinary application code, the directive model is designed to remove them.
+The cost on Cloudflare is the "Rules of Workflows" page. Code outside `step.do()` may run more than once when the engine restarts, top-level state must come exclusively from `step.do()` return values, `Promise.race` and `Promise.any` need to be wrapped in `step.do()` to cache correctly, Hyperdrive connections can't be reused across steps, and a missing await on `step.do()` silently swallows exceptions. The rules exist because the runtime exposes its mechanics directly. For teams that want explicit control over step state, those rules are the tradeoff. For teams that want durable execution without those rules, the directive model removes them.
 
 ### How Workflows surfaces itself to coding agents 
 
 A coding agent working on a system it can't observe is guessing. Most orchestration platforms expose runs through a dashboard meant for humans; the agent either screen-scrapes or asks the developer to copy-paste run state into the prompt. Neither approach scales when the agent is doing real work across long sessions.
 
-The Workflow SDK ships a CLI (`npx workflow inspect runs --backend vercel`) that returns the same run state a developer would see in the dashboard, in a format the agent can consume directly. There's also a Workflows [skill](https://vercel.com/docs/agent-resources/skills) in the CLI ecosystem (`npx skills add <owner/repo>`) that gives the agent product knowledge about Workflows without needing to re-explain it in every prompt. Cloudflare's `wrangler` CLI tails logs but doesn't ship workflow-specific inspection or a coding-agent skill.
+The [Workflow SDK](https://workflow-sdk.dev/) ships a CLI (`npx workflow inspect runs --backend vercel`) that returns the same run state a developer would see in the dashboard, in a format the agent can consume directly. There's also a Workflows [skill](https://vercel.com/docs/agent-resources/skills) in the CLI ecosystem (`npx skills add <owner/repo>`) that gives the agent product knowledge about Workflows without needing to re-explain it in every prompt. Cloudflare's `wrangler` CLI tails logs but doesn't ship workflow-specific inspection or a coding-agent skill.
 
 ### How framework-agnostic reach removes the migration tax
 
 Adding durable execution to an existing application usually means committing to its framework. A workflow runtime built around Next.js doesn't help if your application is on Hono; one built around Workers doesn't help if you're on Fastify. Teams end up either rebuilding routes onto the supported framework or running a second orchestration layer alongside their existing stack.
 
-The Workflow SDK runs [across](https://workflow-sdk.dev/docs/getting-started) Next.js, Vite, Astro, Express, Fastify, Hono, Nitro, Nuxt, SvelteKit, and TanStack Start, with a Python SDK in beta. A team that already chose its framework doesn't need to revisit that choice to add durable execution. The directive model compiles into framework-appropriate routes at build time. Cloudflare Workflows assumes Workers and Durable Objects. The SDK is open source and runs locally in Miniflare, but it can't be brought to a different runtime.
+The Workflow SDK runs [across](https://workflow-sdk.dev/docs/getting-started) Next.js, Vite, Astro, Express, Fastify, Hono, Nitro, Nuxt, SvelteKit, and TanStack Start, with a Python SDK in beta. A team that already decided on its framework doesn't need to revisit that choice to add durable execution. The directive model compiles into framework-appropriate routes at build time. Cloudflare's SDK is open source and runs locally in Miniflare, but it can't be lifted to a different runtime.
 
 ### How Worlds let workflows run on any infrastructure
 
 Most durable execution products tie the SDK to the runtime. The workflow code that runs on the vendor's cloud can't be lifted to your own infrastructure without rewriting it.
 
-The Workflow SDK is organized around an adapter pattern called Worlds. Each World provides the three components a workflow needs (an event log, a queue, and compute), backed by different infrastructure. Local World runs zero-config on your machine for development. Vercel World is managed and runs on Fluid compute and [Vercel Queues](https://vercel.com/docs/queues). The Postgres World is the self-hosted reference implementation that customers run in production today. Community Worlds for MongoDB, Redis, Turso, and Jazz Cloud are already shipped.
+The Workflow SDK is organized around an adapter pattern called Worlds. Each World provides the three components a workflow needs (an event log, a queue, and compute), backed by different infrastructure. The SDK ships with Local World for zero-config development, Vercel World for managed production on Fluid compute and [Vercel Queues](https://vercel.com/docs/queues), and Postgres World as the self-hosted reference customers run today. Community Worlds for MongoDB, Redis, Turso, and Jazz Cloud are already shipped.
 
-Same workflow code, different runtimes. The SDK is open source under the same license as the AI SDK and Chat SDK. See [Workflow Worlds](https://workflow-sdk.dev/worlds) for the full list with maintainer status and end-to-end encryption support.
+Same workflow code, different runtimes. The SDK is open source under the same license as the AI SDK and [Chat SDK](https://chat-sdk.dev/). See [Workflow Worlds](https://workflow-sdk.dev/worlds) for the full list with maintainer status and end-to-end encryption support.
 
 ### How encryption-by-default ships with every workflow
 
@@ -179,7 +179,7 @@ Each Cloudflare workflow instance is backed by a dedicated SQLite database that 
 
 ### Globally distributed compute close to users
 
-Workers run on Cloudflare's network across 330+ cities in 125+ countries, with V8 isolates that have effectively no cold start. Workflow triggers and step execution can happen in the city closest to the end user. Vercel Workflows runs regionally on Fluid compute. For workloads where trigger latency from a globally distributed user base matters, or for workloads with users in regions where Vercel doesn't currently have a compute region close by, edge proximity is a real Cloudflare advantage.
+Workers run on Cloudflare's network across 330+ cities in 125+ countries, with V8 isolates that have effectively no cold start, so workflow triggers and step execution can happen in the city closest to the end user. Vercel Workflows runs regionally on Fluid compute. For workloads where trigger latency from a globally distributed user base matters, or those with users in regions where Vercel doesn't currently have a compute region close by, edge proximity is a real Cloudflare advantage.
 
 ### CPU-time-only billing for I/O-heavy and idle workflows
 
@@ -187,7 +187,7 @@ Cloudflare's billing model has fewer dimensions: CPU milliseconds consumed, requ
 
 ### Explicit, refactor-safe step identity
 
-Cloudflare steps are identified by string names the developer passes to `step.do("step-name", ...)`. Rename functions, reorder code, or rewrite a step in a different language, and in-flight workflows continue correctly as long as the name holds. Step names appear in stack traces, dashboard run views, and the `step.name`/`step.count` context properties for logging and loop disambiguation. Vercel addresses refactor-safety through skew protection, but the mental model differs: an explicit string ID you can reason about versus a directive whose identity is inferred from source position.
+Cloudflare steps are identified by string names the developer passes to `step.do("step-name", ...)`. Rename functions, reorder code, or rewrite a step in a different language, and in-flight workflows continue correctly as long as the name holds. Step names appear in stack traces, dashboard run views, and the `step.name`/`step.count` context properties for logging and loop disambiguation. Vercel addresses refactor-safety through Skew Protection, but the mental model differs: an explicit string ID you can reason about versus a directive whose identity is inferred from source position.
 
 ### Tighter coupling to Cloudflare primitives
 
@@ -195,7 +195,7 @@ Workflows access Cloudflare services through in-process bindings. The workflow's
 
 ### A documented testing story with isolated storage and step mocking
 
-Cloudflare's engineering [blog](https://blog.cloudflare.com/better-testing-for-workflows/) called the prior testing experience for Workflows a "black box." The team shipped a substantial overhaul in November 2025. The `cloudflare:test` module (in `@cloudflare/vitest-pool-workers` 0.9.0+) provides `introspectWorkflow` and `introspectWorkflowInstance` for capturing instances, plus modifiers for mocking step results, disabling sleeps, forcing step errors, and injecting mock events. Everything runs against isolated per-test storage with automatic cleanup via `await using`. Explicit string-based step IDs make assertions readable in test output. Vercel Workflows inherits Vercel's broader observability surface but doesn't ship workflow-specific testing primitives today. For teams whose discipline centers on isolated unit tests of workflow steps, Cloudflare's tooling is currently more direct.
+Cloudflare's engineering [blog](https://blog.cloudflare.com/better-testing-for-workflows/) called the prior testing experience for Workflows a "black box," and the team shipped a substantial overhaul in November 2025. The `cloudflare:test` module (in `@cloudflare/vitest-pool-workers` 0.9.0+) provides `introspectWorkflow` and `introspectWorkflowInstance` for capturing instances, plus modifiers for mocking step results, disabling sleeps, forcing step errors, and injecting mock events, all running against isolated per-test storage with automatic cleanup via `await using`. Explicit string-based step IDs make assertions readable in test output. Vercel Workflows inherits Vercel's broader observability surface but doesn't ship workflow-specific testing primitives today. For teams whose discipline centers on isolated unit tests of workflow steps, Cloudflare's tooling is currently more direct.
 
 --- 
 
@@ -214,7 +214,7 @@ Vercel and Cloudflare both bill for what compute consumes, but the dimensions di
 
 For workflows with predictable step counts and large per-step payloads, Vercel's per-Step billing tracks throughput directly and the bill is easy to forecast. For workflows that spend most of their wall-clock time waiting on inference, long retries, or external APIs, Cloudflare's CPU-time-only billing means the bill tracks just the seconds of actual computation, regardless of wall-clock duration.
 
-The right pricing model usually comes down to workload shape. Two workflows with the same step count but different I/O patterns can land in very different cost ranges on the same platform, and each platform's model is calibrated for a different shape.
+The right pricing model usually comes down to workload shape. Two workflows with the same step count but different I/O patterns can land in very different cost ranges on the same platform, and each platform's model is calibrated for a different one.
 
 ----
 
