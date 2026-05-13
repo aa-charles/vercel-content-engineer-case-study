@@ -22,7 +22,7 @@ Three files do the work:
 - `piece_brief.md` — per-piece specifics. Thesis, audience, editorial tensions, voice anchor declaration, scope, piece-specific anti-patterns.
 - `roles.json` — source-handling lookup.
 
-These load into every agent's system prompt via `prompt_context.py`. Adding a new article type means writing a new brief and adjusting roles — agent code doesn't change. Universal editorial standards don't drift per piece.
+These load into every agent's system prompt via `prompt_context.py`. Adding a new article type means writing a new brief and adjusting roles. The agent code doesn't change. Universal editorial standards don't drift per piece.
 
 ## To run
 
@@ -42,28 +42,41 @@ The pipeline currently runs locally in Python. The natural next step is running 
 
 ```typescript
 // sketch: this pipeline as a Vercel Workflow
+import { createHook } from 'workflow';
+
 export async function contentPipeline(config: PipelineConfig) {
   'use workflow';
 
   const claims = await extractStage(config);
   const matrix = await compareStage(claims, config);
 
-  // editorial review checkpoint — hook waits for human approval
-  const approved = await waitForReview(matrix);
-  if (!approved) return { status: 'rejected_at_review' };
+  // editorial review: workflow suspends on the hook until the editor responds
+  using hook = createHook<MatrixReview>({ token: `review:${config.id}` });
+  const review = await hook;
+  if (!review.approved) return { status: 'rejected_at_review' };
 
-  const draft = await draftStage(matrix, config);
+  const draft = await draftStage(review.editedMatrix ?? matrix, config);
   return { status: 'completed', article: draft };
+}
+
+// each dimension composition is a step, parallelized at the workflow layer with Promise.all
+async function composeDimension(claims: Claim[], dim: Dimension) {
+  'use step';
+  // the actual Anthropic call for this dimension
 }
 ```
 
-Each agent stage becomes a step. The editorial review checkpoint becomes a hook. Durable streams carry pipeline progress to the case study site's run viewer. The 50 MB per-step payload is well-suited to passing the full claim corpus (~4 MB) between stages. Architectural sketch and migration plan at `docs/vercel-workflows-plan.md`.
+Each agent stage becomes a workflow function that orchestrates its `'use step'` calls. The editorial review checkpoint becomes a hook, letting the workflow suspend without consuming compute while the editor reviews the matrix (and crucially, the editor's edits to the matrix feed back into the draft stage, closing a loop that's currently one-way in the Python orchestrator). The compare stage's currently-sequential sub-passes parallelize at the workflow layer with `Promise.all`. Durable streams via `getWritable()` carry pipeline progress to the case study site's run viewer. The 50 MB per-step payload is well-suited to passing the full claim corpus (~4 MB) between stages.
+
+The system that produces durable execution content runs on a durable execution runtime.
 
 ## What I'd improve
 
 - **Structured intake stage.** Writing `piece_brief.md` from scratch is the hardest part. The natural product is a two-stage flow: lightweight intake (subjects, URLs, voice anchor), then an auto-generated draft brief the user reviews before the pipeline runs.
 - **Schema extension to other article types.** The architecture supports deep-dive, customer story, and tutorial as new schema definitions. Currently only the comparison-piece schema exists.
 - **Source freshness checks.** Vercel's Workflows pricing model changed between research and editorial pass — a pre-run check on cached sources would catch this earlier.
+
+A full list of technical, process, and architectural improvements can be found at [case study site](https://v0-conteng-case.vercel.app/system/improvements).
 
 ## Repo layout
 
